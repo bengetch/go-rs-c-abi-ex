@@ -1,0 +1,3 @@
+[submodule "rs-c-abi-ex"]
+	path = rs-c-abi-ex
+	url = https://github.com/bengetch/rs-c-abi-ex.git
