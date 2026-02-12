@@ -1,0 +1,86 @@
+name: Build Rust staticlib
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'rs-c-abi-ex/**'
+      - '.github/workflows/build-rs-c-abi-ex.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'rs-c-abi-ex/**'
+      - '.github/workflows/build-rs-c-abi-ex.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            triplet: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            triplet: aarch64-unknown-linux-gnu
+          - os: macos-latest
+            triplet: x86_64-apple-darwin
+          - os: macos-latest
+            triplet: aarch64-apple-darwin
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add target
+        run: rustup target add ${{ matrix.triplet }}
+
+      - name: Install cross deps (Linux ARM)
+        if: matrix.triplet == 'aarch64-unknown-linux-gnu'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build staticlib
+        run: |
+          cd rs-c-abi-ex
+          cargo build --release --target ${{ matrix.triplet }}
+
+      - name: Copy artifact
+        run: |
+          mkdir -p prebuilt/${{ matrix.triplet }}
+          cp rs-c-abi-ex/target/${{ matrix.triplet }}/release/librs_c_abi_ex.a \
+             prebuilt/${{ matrix.triplet }}/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.triplet }}
+          path: prebuilt/${{ matrix.triplet }}
+
+  commit:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: prebuilt
+
+      - name: Commit prebuilts
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update Rust prebuilts"
+          file_pattern: prebuilt/**
