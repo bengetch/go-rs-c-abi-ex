@@ -4,11 +4,13 @@ on:
   pull_request:
     branches: [ main ]
     paths:
+      - 'rs-c-abi-ex'
       - 'rs-c-abi-ex/**'
       - '.github/workflows/build-rs-c-abi-ex.yml'
   push:
     branches: [ main ]
     paths:
+      - 'rs-c-abi-ex'
       - 'rs-c-abi-ex/**'
       - '.github/workflows/build-rs-c-abi-ex.yml'
   workflow_dispatch:
@@ -51,7 +53,7 @@ jobs:
       - name: Build staticlib
         run: |
           cd rs-c-abi-ex
-          cargo build --release --target ${{ matrix.triplet }}
+          cargo build --release --features ffi --target ${{ matrix.triplet }}
 
       - name: Copy artifact
         run: |
